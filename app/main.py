@@ -27,34 +27,47 @@ from app.config import Settings
 async def cli_main(settings: Settings) -> None:
     """Interactive CLI loop."""
     from app.factory import build_agent
+    from rich.console import Console
+    from rich.markdown import Markdown
+    from rich.panel import Panel
 
+    console = Console()
     agent = await build_agent(settings)
     conv_id = str(uuid.uuid4())
 
     tools = [sp.name for sp in agent._tools.specs()]
-    print(f"\nPersonal AI Agent (provider={settings.llm_provider}, model={settings.resolved_model()})")
-    print(f"Tools: {tools}")
-    print(f"Conversation: {conv_id[:8]}...")
-    print("Type 'quit' or 'exit' to stop.\n")
+    
+    # Welcome banner
+    welcome_text = (
+        f"**Provider**: `{settings.llm_provider}` | **Model**: `{settings.resolved_model()}`\n"
+        f"**Tools**: `{', '.join(tools)}`\n"
+        f"**Conversation ID**: `{conv_id[:8]}...`"
+    )
+    console.print(Panel(Markdown(welcome_text), title="[bold cyan]MIA Personal AI Agent[/bold cyan]", border_style="cyan"))
+    console.print("[dim]Type 'quit' or 'exit' to stop.[/dim]\n")
 
     while True:
         try:
-            user_input = input("You: ").strip()
+            user_input = console.input("[bold green]You[/bold green] ❯ ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nGoodbye!")
+            console.print("\n[bold yellow]Goodbye![/bold yellow]")
             break
 
         if not user_input:
             continue
         if user_input.lower() in ("quit", "exit"):
-            print("Goodbye!")
+            console.print("[bold yellow]Goodbye![/bold yellow]")
             break
 
-        result = await agent.run(
-            user_message=user_input,
-            conversation_id=conv_id,
-        )
-        print(f"Agent: {result.content}\n")
+        with console.status("[bold cyan]Agent is thinking...[/bold cyan]", spinner="dots"):
+            result = await agent.run(
+                user_message=user_input,
+                conversation_id=conv_id,
+            )
+            
+        console.print("\n[bold purple]MIA[/bold purple] ❯")
+        console.print(Markdown(result.content))
+        console.print()
 
 
 # ── API Mode ─────────────────────────────────────────────────────
@@ -124,10 +137,19 @@ def main() -> None:
     settings = Settings()
 
     # Configure logging
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level.upper(), logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
+    if "--api" in sys.argv:
+        logging.basicConfig(
+            level=getattr(logging, settings.log_level.upper(), logging.INFO),
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        )
+    else:
+        from rich.logging import RichHandler
+        logging.basicConfig(
+            level=getattr(logging, settings.log_level.upper(), logging.INFO),
+            format="%(message)s",
+            datefmt="[%X]",
+            handlers=[RichHandler(rich_tracebacks=True, markup=True)]
+        )
 
     if "--api" in sys.argv:
         api_main(settings)
