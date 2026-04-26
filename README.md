@@ -94,12 +94,12 @@ cp .env.example .env
 # 4. Run tests
 pytest tests/ -v
 
-# 5. Start CLI mode
-python agent.py
-
-# 6. Or start API mode
+# 5. Start the Application (Recommended: Frontend Mode)
+# This will start the FastAPI backend and serve the Web UI at http://localhost:8000
 python agent.py --api
-# Then: curl http://localhost:8000/health
+
+# 6. Or start in CLI mode
+python agent.py
 ```
 
 ## Fault Injection (INJECT_FAILURE)
