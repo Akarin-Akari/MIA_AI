@@ -78,8 +78,8 @@ graph TD
 
 ```bash
 # 1. Clone and setup
-git clone <repo-url>
-cd personal-ai-agent
+git clone https://github.com/miaojan/challenge---785d37.git
+cd challenge---785d37
 python -m venv .venv
 .venv/Scripts/activate  # Windows
 # source .venv/bin/activate  # Linux/Mac
@@ -107,11 +107,13 @@ python agent.py --api
 The agent supports environment-variable-based fault injection to demonstrate retry and recovery behavior:
 
 ```bash
-# Inject failure into write_note tool
+# Linux / macOS
 INJECT_FAILURE=write_note python agent.py
-
-# Inject failure into mock_search tool
 INJECT_FAILURE=mock_search python agent.py
+
+# Windows PowerShell
+$env:INJECT_FAILURE="write_note"; python agent.py
+$env:INJECT_FAILURE="mock_search"; python agent.py
 ```
 
 When `INJECT_FAILURE` is set to a tool name, that tool will raise an exception on every call. The agent will:
