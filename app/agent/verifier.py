@@ -150,8 +150,12 @@ class SelfVerifier:
     ) -> list[str]:
         """Check for contradictions between tool results and answer.
 
-        Detects: tool returned ERROR but answer claims success.
+        Detects:
+        1. Tool returned ERROR but answer claims success
+        2. Tool claims file written but file doesn't exist or is empty
         """
+        import os
+
         issues: list[str] = []
         answer_lower = answer.lower()
 
@@ -167,6 +171,30 @@ class SelfVerifier:
                         f"Tool result #{i+1} contains ERROR but answer claims success. "
                         f"Tool result: {result[:100]}"
                     )
+
+            # Deterministic file existence check:
+            # If tool result mentions "saved to <path>" or "written to <path>",
+            # verify the file actually exists and is non-empty.
+            result_lower = result.lower()
+            if "saved" in result_lower or "written" in result_lower:
+                import re as _re
+                # Match file paths like: memory/notes/xxx.md, /some/path/file.txt
+                path_patterns = _re.findall(
+                    r'(?:saved(?:\s+successfully)?\s+to|written\s+to)\s+([^\s,]+)',
+                    result, _re.IGNORECASE,
+                )
+                for file_path in path_patterns:
+                    file_path = file_path.rstrip(".")
+                    if not os.path.isfile(file_path):
+                        issues.append(
+                            f"Tool result #{i+1} claims file saved to '{file_path}' "
+                            f"but file does NOT exist on disk."
+                        )
+                    elif os.path.getsize(file_path) == 0:
+                        issues.append(
+                            f"Tool result #{i+1} claims file saved to '{file_path}' "
+                            f"but file is EMPTY (0 bytes)."
+                        )
 
         return issues
 

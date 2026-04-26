@@ -7,12 +7,14 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.venv/
 
 # Memory data (runtime generated)
 memory/*.db
 memory/*.json
 memory/*.md
 memory/conversations/
+memory/notes/
 
 # IDE
 .vscode/
@@ -27,3 +29,7 @@ htmlcov/
 Thumbs.db
 .DS_Store
 .ace-tool/
+
+# Documentation (internal scaffold docs — not for submission)
+docs/
+.tmp/

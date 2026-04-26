@@ -209,8 +209,20 @@ class AgentExecutor:
                         tool_results_collected.append(intervention)
                         continue
 
-                    # Execute tool
-                    result = await self._tools.execute(tc.name, tc.input)
+                    # Execute tool with retry (max 2 retries on failure)
+                    MAX_TOOL_RETRIES = 2
+                    result = ""
+                    for attempt in range(MAX_TOOL_RETRIES + 1):
+                        result = await self._tools.execute(tc.name, tc.input)
+                        if "ERROR" not in result:
+                            break
+                        logger.warning(
+                            "Tool '%s' failed (attempt %d/%d): %s",
+                            tc.name, attempt + 1, MAX_TOOL_RETRIES + 1, result[:200],
+                        )
+                        if attempt < MAX_TOOL_RETRIES:
+                            logger.info("Retrying tool '%s'...", tc.name)
+
                     tool_results_collected.append(result)
 
                     # Add tool_result matched by ID (NOT position)

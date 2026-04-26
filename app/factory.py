@@ -20,9 +20,10 @@ from app.memory.retriever import NoOpRetriever
 from app.memory.sqlite_store import SQLiteStore
 from app.memory.working import WorkingMemory
 from app.tools.dummy import DummyTool
-from app.tools.notes import NoteTool
+from app.tools.mock_search import MockSearchTool
+from app.tools.read_notes import ReadNotesTool
 from app.tools.registry import ToolRegistry
-from app.tools.weather import WeatherTool
+from app.tools.write_note import WriteNoteTool
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +68,24 @@ async def build_agent(settings: Settings) -> AgentExecutor:
     logger.info("LLM Client: %s (model=%s)", settings.llm_provider, model)
 
     # ── Tool Registry ────────────────────────────────────────────
+    # Determine which tool (if any) should have fault injection
+    inject_target = settings.inject_failure.strip().lower()
+
     tool_registry = ToolRegistry()
     tool_registry.register(DummyTool())
-    tool_registry.register(WeatherTool())
-    tool_registry.register(NoteTool(memory_dir=settings.memory_dir))
+    tool_registry.register(MockSearchTool(
+        inject_failure=(inject_target == "mock_search"),
+    ))
+    tool_registry.register(WriteNoteTool(
+        notes_dir=settings.notes_dir,
+        inject_failure=(inject_target == "write_note"),
+    ))
+    tool_registry.register(ReadNotesTool(
+        notes_dir=settings.notes_dir,
+    ))
+
+    if inject_target:
+        logger.warning("⚠️ INJECT_FAILURE='%s' — tool '%s' will raise on execute", inject_target, inject_target)
 
     # ── Memory Stack ─────────────────────────────────────────────
     # Ensure memory directory exists
@@ -80,6 +95,10 @@ async def build_agent(settings: Settings) -> AgentExecutor:
     # Ensure DB directory exists
     db_dir = Path(settings.db_path).parent
     db_dir.mkdir(parents=True, exist_ok=True)
+
+    # Ensure notes directory exists
+    notes_dir = Path(settings.notes_dir)
+    notes_dir.mkdir(parents=True, exist_ok=True)
 
     working = WorkingMemory(maxlen=settings.working_max_per_conv)
     markdown = MarkdownMemory(memory_dir=settings.memory_dir)

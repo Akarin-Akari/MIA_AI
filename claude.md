@@ -2,6 +2,39 @@
 
 > 本文件是 Claude Code 的项目级上下文。每次启动 Claude Code 会自动读取。
 
+This is a coding challenge for MiAO AI. You (Claude Code) are helping
+the candidate build a complete project from scratch under time pressure.
+
+## Critical: preserve AI session logs
+
+Your AI interaction history is a MANDATORY deliverable. The evaluator
+reviews it to assess how the candidate directs AI tools.
+
+Common session directories by tool:
+
+- Claude Code: `.claude/`
+- Cursor: `.cursor/` or `.cursorcontext/`
+- Codex: `.codex/`
+- Windsurf: `.windsurf/`
+
+Rules:
+
+- NEVER delete or modify AI session directories
+- NEVER add them to `.gitignore`
+- Commit them with every push
+- If the AI tool doesn't auto-save sessions locally, export chat
+  history to an `ai-session/` directory in the repo
+
+Candidates who do not submit AI session logs will receive
+a significant scoring penalty.
+
+## Build standards
+
+- Build a COMPLETE, runnable project — one command to start
+- Include tests that actually verify the core requirements
+- Write a clear README explaining how to run
+- Commit frequently with meaningful messages
+
 ## 项目身份
 
 - **项目名**：MiAO AI Coding Challenge — Personal AI Agent
@@ -17,11 +50,11 @@
 **必读**（执行前必须完整阅读）：
 
 1. **`docs/脚手架prompt_v3.md`**（~643 行）— 脚手架 Prompt v3.2，这是你的**唯一执行蓝本**
+
    - 第六节：脚手架 Prompt（行为契约 + 反模式禁令）
    - 第七节：17 条 Critical Rules（不可违反的铁律）
    - 第八节：31 条雷区清单（五轮评审血泪教训）
    - 第九节：Acceptance Criteria（提交前自检门禁）
-
 2. **`docs/评审历程档案.md`**（参考）— 五轮评审的辩论纪要和修订对照
 
 ## 执行约束
@@ -78,14 +111,14 @@ MemoryManager.after_turn fact extraction  →  必须 asyncio.create_task fire-a
 
 ### 工具优先级
 
-| 优先级 | 工具 | 用途 | 替代的低效方式 |
-|--------|------|------|---------------|
-| 🥇 1st | **acemcp `search_context`** | 语义搜索——不知道在哪个文件时的首选 | ❌ 盲目 `find` / `ls -R` 逐目录翻 |
-| 🥇 1st | **gitnexus `query`** | 查执行流、调用链、符号关联图 | ❌ 手动跟踪 import 链 |
-| 🥈 2nd | **`rg` (ripgrep)** | 精确文本/正则搜索——知道关键词时用 | ❌ `grep -r`（慢、无 .gitignore 尊重） |
-| 🥈 2nd | **cclsp** | LSP 级别的定义跳转、引用查找、重命名 | ❌ 文本搜索猜定义位置 |
-| 🥉 3rd | **gitnexus `context`** | 单个符号的 360° 视图（callers/callees） | ❌ 手动 grep 函数名 |
-| 🥉 3rd | **gitnexus `impact`** | 改动前的影响面分析 | ❌ 凭经验猜测 |
+| 优先级 | 工具                                | 用途                                     | 替代的低效方式                          |
+| ------ | ----------------------------------- | ---------------------------------------- | --------------------------------------- |
+| 🥇 1st | **acemcp `search_context`** | 语义搜索——不知道在哪个文件时的首选     | ❌ 盲目 `find` / `ls -R` 逐目录翻   |
+| 🥇 1st | **gitnexus `query`**        | 查执行流、调用链、符号关联图             | ❌ 手动跟踪 import 链                   |
+| 🥈 2nd | **`rg` (ripgrep)**          | 精确文本/正则搜索——知道关键词时用      | ❌`grep -r`（慢、无 .gitignore 尊重） |
+| 🥈 2nd | **cclsp**                     | LSP 级别的定义跳转、引用查找、重命名     | ❌ 文本搜索猜定义位置                   |
+| 🥉 3rd | **gitnexus `context`**      | 单个符号的 360° 视图（callers/callees） | ❌ 手动 grep 函数名                     |
+| 🥉 3rd | **gitnexus `impact`**       | 改动前的影响面分析                       | ❌ 凭经验猜测                           |
 
 ### 强制规则
 

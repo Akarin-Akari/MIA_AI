@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     verifier_soft_fallback: bool = True
     verifier_sampling_rate: float = 0.1
 
+    # Fault Injection (evaluation)
+    inject_failure: str = ""  # Tool name to inject failure into (e.g. "write_note")
+
+    # Notes
+    notes_dir: str = "memory/notes"
+
     # General
     log_level: str = "INFO"
     api_host: str = "0.0.0.0"
