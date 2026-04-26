@@ -90,7 +90,7 @@ def api_main(settings: Settings) -> None:
     )
     app.include_router(router)
 
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level=settings.log_level.lower())
+    uvicorn.run(app, host=settings.api_host, port=settings.api_port, log_level=settings.log_level.lower())
 
 
 # ── Entrypoint ───────────────────────────────────────────────────

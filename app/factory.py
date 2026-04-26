@@ -45,6 +45,7 @@ async def build_agent(settings: Settings) -> AgentExecutor:
         llm_client = AnthropicClient(
             api_key=settings.anthropic_api_key,
             model=model,
+            max_tokens=settings.llm_max_tokens,
         )
     elif settings.llm_provider == "openai":
         from app.llm.openai_client import OpenAIClient
@@ -53,7 +54,12 @@ async def build_agent(settings: Settings) -> AgentExecutor:
             model=model,
         )
     else:
-        raise ValueError(f"Unknown LLM provider: {settings.llm_provider}")
+        supported = ", ".join(sorted(["anthropic", "openai"]))
+        raise ValueError(
+            f"Unsupported LLM provider: '{settings.llm_provider}'. "
+            f"Supported providers: [{supported}]. "
+            f"Set LLM_PROVIDER env var or llm_provider in .env."
+        )
 
     logger.info("LLM Client: %s (model=%s)", settings.llm_provider, model)
 

@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     model_name: str = ""
+    llm_max_tokens: int = 4096
     max_iterations: int = 10
 
     # Memory
@@ -61,6 +62,8 @@ class Settings(BaseSettings):
 
     # General
     log_level: str = "INFO"
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
 
     @field_validator("llm_provider")
     @classmethod
@@ -92,4 +95,4 @@ class Settings(BaseSettings):
         """
         if self.model_name:
             return self.model_name
-        return DEFAULT_MODELS.get(self.llm_provider, "gpt-4o-mini")
+        return DEFAULT_MODELS.get(self.llm_provider, DEFAULT_MODELS["openai"])

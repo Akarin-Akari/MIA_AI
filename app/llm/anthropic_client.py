@@ -21,9 +21,10 @@ logger = logging.getLogger(__name__)
 class AnthropicClient:
     """Anthropic Messages API client with full marshal/unmarshal."""
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str, model: str, max_tokens: int = 4096) -> None:
         self._client = anthropic.AsyncAnthropic(api_key=api_key)
         self._model = model
+        self._max_tokens = max_tokens
 
     # ── Inbound Translation ──────────────────────────────────────────
 
@@ -165,7 +166,7 @@ class AnthropicClient:
         """
         kwargs: dict[str, Any] = {
             "model": self._model,
-            "max_tokens": 4096,
+            "max_tokens": self._max_tokens,
             "messages": self._to_anthropic_messages(messages),
         }
 
