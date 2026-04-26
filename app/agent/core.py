@@ -214,7 +214,7 @@ class AgentExecutor:
                     result = ""
                     for attempt in range(MAX_TOOL_RETRIES + 1):
                         result = await self._tools.execute(tc.name, tc.input)
-                        if "ERROR" not in result:
+                        if not result.startswith("ERROR:"):
                             break
                         logger.warning(
                             "Tool '%s' failed (attempt %d/%d): %s",

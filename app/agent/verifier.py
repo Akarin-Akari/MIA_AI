@@ -151,7 +151,9 @@ class SelfVerifier:
         """Check for contradictions between tool results and answer.
 
         Detects:
-        1. Tool returned ERROR but answer claims success
+        1. FINAL tool result is ERROR but answer claims success
+           (intermediate errors from earlier ReAct iterations are ignored
+            — the agent may have self-corrected on a later attempt)
         2. Tool claims file written but file doesn't exist or is empty
         """
         import os
@@ -159,26 +161,37 @@ class SelfVerifier:
         issues: list[str] = []
         answer_lower = answer.lower()
 
+        # ── Contradiction check: only the LAST error matters ─────────
+        # If earlier iterations failed but a later one succeeded,
+        # claiming "success" in the answer is correct, not contradictory.
+        last_error_result = None
+        for result in tool_results:
+            if result.startswith("ERROR:"):
+                last_error_result = result
+
+        if last_error_result is not None:
+            has_success_word = any(w in answer_lower for w in _SUCCESS_WORDS)
+            has_negation = any(
+                neg in answer_lower
+                for neg in ["未", "没", "not ", "didn't", "failed"]
+            )
+            if has_success_word and not has_negation:
+                issues.append(
+                    f"Final tool result contains ERROR but answer claims success. "
+                    f"Tool result: {last_error_result[:100]}"
+                )
+
+        # ── Deterministic file existence check ───────────────────────
+        # Only check non-error results for file existence claims.
+        # Error results or read-only results may contain "written"
+        # in their body text without actually writing anything.
         for i, result in enumerate(tool_results):
-            if "ERROR" in result:
-                # Check if answer claims success despite error
-                has_success_word = any(w in answer_lower for w in _SUCCESS_WORDS)
-                # Check for negation prefixes (未, 没, not, etc.)
-                has_negation = any(neg in answer_lower for neg in ["未", "没", "not ", "didn't", "failed"])
+            if result.startswith("ERROR:"):
+                continue  # Skip error results — no file was created
 
-                if has_success_word and not has_negation:
-                    issues.append(
-                        f"Tool result #{i+1} contains ERROR but answer claims success. "
-                        f"Tool result: {result[:100]}"
-                    )
-
-            # Deterministic file existence check:
-            # If tool result mentions "saved to <path>" or "written to <path>",
-            # verify the file actually exists and is non-empty.
             result_lower = result.lower()
             if "saved" in result_lower or "written" in result_lower:
                 import re as _re
-                # Match file paths like: memory/notes/xxx.md, /some/path/file.txt
                 path_patterns = _re.findall(
                     r'(?:saved(?:\s+successfully)?\s+to|written\s+to)\s+([^\s,]+)',
                     result, _re.IGNORECASE,
@@ -218,20 +231,25 @@ class SelfVerifier:
             field_value = meta["value"]
 
             if field_type == "number":
-                # Extract numbers from answer, compare with tolerance
+                # Only flag if the key is mentioned in the answer but
+                # the expected value is ABSENT — not "some other number exists".
                 tolerance = meta.get("tolerance", 0)
-                numbers_in_answer = re.findall(r"[-+]?\d*\.?\d+", answer)
-                if numbers_in_answer and str(key).lower() in answer.lower():
+                if str(key).lower() in answer.lower():
+                    numbers_in_answer = re.findall(r"[-+]?\d*\.?\d+", answer)
+                    found_expected = False
                     for num_str in numbers_in_answer:
                         try:
                             num = float(num_str)
-                            if abs(num - float(field_value)) > tolerance:
-                                issues.append(
-                                    f"Profile '{key}' = {field_value} (tolerance={tolerance}), "
-                                    f"but answer contains {num}"
-                                )
+                            if abs(num - float(field_value)) <= tolerance:
+                                found_expected = True
+                                break
                         except (ValueError, TypeError):
                             continue
+                    if numbers_in_answer and not found_expected:
+                        issues.append(
+                            f"Profile '{key}' = {field_value} (tolerance={tolerance}), "
+                            f"but answer does not contain a matching number"
+                        )
 
             elif field_type == "enum":
                 # Check if answer mentions the field but uses wrong value
