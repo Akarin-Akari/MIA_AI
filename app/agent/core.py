@@ -18,7 +18,7 @@ import asyncio
 import hashlib
 import json
 import logging
-from collections import defaultdict
+from collections import deque
 from typing import Any
 
 from app.agent.verifier import SelfVerifier
@@ -41,8 +41,8 @@ class RepeatedFailureDetector:
 
     def __init__(self, max_repeats: int = 3) -> None:
         self._max_repeats = max_repeats
-        # Per conv_id tracking — NEVER share across conversations
-        self._history: dict[str, list[str]] = defaultdict(list)
+        # Per conv_id tracking — bounded deque prevents memory leak
+        self._history: dict[str, deque[str]] = {}
 
     @staticmethod
     def _signature(tool_name: str, tool_input: dict[str, Any]) -> str:
@@ -59,6 +59,8 @@ class RepeatedFailureDetector:
             tool_input: Arguments passed to the tool.
         """
         sig = self._signature(tool_name, tool_input)
+        if conv_id not in self._history:
+            self._history[conv_id] = deque(maxlen=self._max_repeats)
         self._history[conv_id].append(sig)
 
     def should_intervene(self, conv_id: str) -> bool:
@@ -70,11 +72,11 @@ class RepeatedFailureDetector:
         Returns:
             True if last N calls have the same signature.
         """
-        history = self._history.get(conv_id, [])
-        if len(history) < self._max_repeats:
+        history = self._history.get(conv_id)
+        if not history or len(history) < self._max_repeats:
             return False
-        # Check if last N entries are identical
-        return len(set(history[-self._max_repeats:])) == 1
+        # deque is bounded to max_repeats — check if all entries are identical
+        return len(set(history)) == 1
 
     def reset(self, conv_id: str) -> None:
         """Reset failure tracking for a conversation."""
@@ -141,6 +143,9 @@ class AgentExecutor:
             logger.error("Agent run failed: %s", e, exc_info=True)
             error_response = f"I'm sorry, I encountered an error: {type(e).__name__}. Please try again."
             return CanonicalMessage(role="assistant", content=error_response)
+        finally:
+            # Always clean up per-turn tracking to prevent memory leak
+            self._detector.reset(conversation_id)
 
     async def _run_inner(
         self,
