@@ -1,0 +1,125 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1777161951303,
+  "projectRoot": "F:\\MIAO_AI",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml",
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": "snake_case",
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "docs",
+      "tests"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 4,
+      "lastAccessed": 1777161951129,
+      "keyFiles": [
+        "config.py",
+        "factory.py",
+        "main.py",
+        "__init__.py"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 5,
+      "lastAccessed": 1777161951132,
+      "keyFiles": [
+        "MiAO AI — Layer 1 脚手架搭建实施计划implementation_plan.md",
+        "miao_ai_v32_final_audit.md",
+        "脚手架prompt.md",
+        "脚手架prompt_v3.md",
+        "评审历程档案.md"
+      ]
+    },
+    "memory": {
+      "path": "memory",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1777161951133,
+      "keyFiles": []
+    },
+    "prompts": {
+      "path": "prompts",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1777161951134,
+      "keyFiles": [
+        "memory_extract.md",
+        "system.md",
+        "verifier.md"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 5,
+      "lastAccessed": 1777161951135,
+      "keyFiles": [
+        "conftest.py",
+        "test_memory_isolation.py",
+        "test_provider_translation.py",
+        "test_verifier_persistence.py",
+        "__init__.py"
+      ]
+    },
+    "app\\api": {
+      "path": "app\\api",
+      "purpose": "API routes",
+      "fileCount": 2,
+      "lastAccessed": 1777161951136,
+      "keyFiles": [
+        "routes.py",
+        "__init__.py"
+      ]
+    },
+    "app\\models": {
+      "path": "app\\models",
+      "purpose": "Data models",
+      "fileCount": 2,
+      "lastAccessed": 1777161951137,
+      "keyFiles": [
+        "schemas.py",
+        "__init__.py"
+      ]
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}

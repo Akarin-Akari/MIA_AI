@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__group-chat__create_room",
+      "mcp__group-chat__register_participant",
+      "mcp__group-chat__send_message",
+      "mcp__group-chat__relay_message_inline",
+      "mcp__group-chat__export_room",
+      "mcp__group-chat__get_messages",
+      "mcp__gemini-cli__ask-gemini",
+      "mcp__group-chat__list_rooms",
+      "mcp__group-chat__warm_session",
+      "mcp__group-chat__relay_message"
+    ]
+  }
+}

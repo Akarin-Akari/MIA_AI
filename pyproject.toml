@@ -1,0 +1,13 @@
+[project]
+name = "personal-ai-agent"
+version = "0.1.0"
+description = "Personal AI Agent with Tool Use, Memory & Self-Verification"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120

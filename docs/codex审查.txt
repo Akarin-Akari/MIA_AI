@@ -1,0 +1,76 @@
+阻断问题
+
+  - Critical: app/agent/verifier.py:245 注释承诺 OpenAI response_format/json_schema、Anthropic forced tool use，但实现只
+    是通用 llm_client.chat(... tools=[...])，没有 response_format / tool_choice。这属于明显的 contract dishonesty，Stage
+    3 结构化输出并不可靠。
+  - Warning: app/agent/core.py:237 + app/memory/manager.py:132 把 after_turn() 丢进 create_task，但内部没有总兜底；
+    SQLite/文件写失败会变成后台未处理异常。
+  - Warning: app/main.py:18 + app/api/routes.py:19 实际依赖模块级 _agent 单例，不是注释宣称的 app.state / 显式 DI。
+  - Warning: app/config.py:45 + app/agent/core.py:219 max_iterations 无校验，设为 0/负数时会走到未定义 response/
+    draft_answer。
+  - Warning: tests/test_provider_translation.py:72 “full roundtrip”名不副实，只测入站翻译，不测 _parse_response、不测
+    chat.completions.create 调用。
+
+  逐文件审查
+
+  1. app/llm/base.py:1 — ✅ PASS。tool_call_id 内部命名正确。Info: parameters/input/role 可收紧为 dict[str, Any] +
+     Literal，增强静态契约。
+  2. app/config.py:1 — ⚠️ ISSUE。Warning: 缺少 llm_provider、max_iterations、verifier_sampling_rate 的值域校验；会直接放
+     大 core 的运行时风险。
+  3. app/models/schemas.py:1 — ✅ PASS。Info: profile: dict 可细化为 dict[str, Any]。
+  4. app/llm/anthropic_client.py:1 — ⚠️ ISSUE。Warning: 顶层 import anthropic 让纯翻译单测也依赖 SDK 安装，当前环境已在收
+     集阶段失败。Info: schema 翻译和 tool_call_id -> tool_use_id 映射本身是诚实的。
+  5. app/llm/openai_client.py:1 — ⚠️ ISSUE。Warning: 顶层 import openai 同样增加测试耦合；app/llm/openai_client.py:127 直
+     接 json.loads() tool arguments，单个坏 payload 会炸整轮。Info: 只使用 chat.completions.create()，这一点是正确的。
+  6. app/tools/base.py:1 — ✅ PASS。ABC 抽象基本诚实，to_spec() 简洁。
+  7. app/tools/registry.py:1 — ✅ PASS。asyncio.to_thread 包裹同步 tool 的位置正确，异常也被吃掉转成字符串。Info: json
+     import 未使用。
+  8. app/tools/dummy.py:1 — ✅ PASS。同步 execute() 用来覆盖 to_thread 路径，设计合理。
+  9. app/memory/working.py:1 — ✅ PASS。dict[conv_id, deque] 隔离正确。
+  10. app/memory/markdown_store.py:1 — ⚠️ ISSUE。asyncio.Lock 在 __init__，atomic write 也落地了。Warning: app/memory/
+     markdown_store.py:105 宣称 metadata schema 必填，但没有 runtime 校验，坏 profile 会被写入并在 Stage 2 被静默跳过。
+  11. app/memory/sqlite_store.py:1 — ⚠️ ISSUE。Warning: save() 接收 metadata: dict，但 get_history() / keyword_search()
+     返回的是原始 metadata_json 字符串，读写契约不对称。
+  12. app/memory/retriever.py:1 — ✅ PASS。NoOpRetriever 默认降级是诚实的。Info: logger 未使用。
+  13. app/memory/manager.py:1 — ⚠️ ISSUE。Warning: app/memory/manager.py:76 用 CWD 相对路径读 prompts/system.md，换启动目
+     录就会静默失效。Warning: app/memory/manager.py:141 fact extraction 的 create_task 是对的，但 after_turn() 自身没有
+     总兜底。Warning: retriever 被注入却从未调用，rag_enabled/retriever_provider 形同虚设。
+  14. app/agent/verifier.py:1 — ⚠️ ISSUE。Critical: Stage 3 与文档宣称不一致，structured outputs 并未真正实现。Warning:
+     app/agent/verifier.py:132 soft_fallback=False 仍可能触发主动采样。Warning: 文档说支持 date，代码没有 date 分支。
+     Warning: revised_answer 描述允许 null，schema 却只允许 string。Info: prompts/verifier.md 实际未被使用。
+  15. app/agent/core.py:1 — ⚠️ ISSUE。Warning: max_iterations<=0 会触发未定义变量路径。Warning: app/agent/core.py:238
+     after_turn() 后台任务无监督。Info: verify 确实是 await 主链路阻塞；tool result 也是按 ID 回填，不按位置 zip。
+  16. app/factory.py:1 — ⚠️ ISSUE。Warning: rag_enabled / retriever_provider 完全没接线，永远是 NoOpRetriever()。Warning:
+     未知 provider 直接抛 ValueError，与“默认降级/异常不冒泡”方向不一致。
+  17. app/api/routes.py:1 — ⚠️ ISSUE。Warning: 注释写 app.state，实际却 from app.main import get_agent。Warning: /memory
+     直接摸私有属性 _memory。Warning: /health 的 provider/model 永远空字符串。Info: Depends 和 _get_agent() 是死代码。
+  18. app/main.py:1 — ⚠️ ISSUE。Warning: 模块级 _agent 就是隐藏的可变全局单例，和文档说法相反。Info: startup 事件写法能
+     用，但 lifespan 会更干净。
+  19. tests/conftest.py:1 — ✅ PASS。tmp_path/文件 DB 策略正确。Info: 有几处未使用 import。
+  20. tests/test_provider_translation.py:1 — ⚠️ ISSUE。Warning: 顶层导入 provider 模块导致纯单测在缺 SDK 时直接收集失败。
+     Warning: 只测 _to_*，不测 _parse_response、不测 OpenAI 是否真的调用 chat.completions.create()，覆盖面被高估。Info:
+     有未使用 import。
+  21. tests/test_memory_isolation.py:1 — ⚠️ ISSUE。Warning: 并发写测试方向是对的，但不够强，缺少强制交错/屏障，未必能稳定
+     区分“实例锁”与“局部锁”。Info: atomic write 失败注入测试写得不错。
+  22. tests/test_verifier_persistence.py:1 — ⚠️ ISSUE。Warning: 文件头说“ALL persistence layers”，实际只验了
+     WorkingMemory 和 SQLite，没验 MarkdownMemory。Warning: 主链路顺序测试只证明 marker 顺序，不证明 verify 完成后才调度
+     after_turn。Info: asyncio.sleep(0.5) 让测试偏脆；也有未使用 import。
+  23. README.md:1 — ⚠️ ISSUE。Warning: README 夸大了 Stage 3 structured outputs 与 prompt-as-config；代码并未兑现。
+     Warning: “DI in factory.py / No hidden globals” 与 app/main.py:18 现实不符。Info: “20 assertions” 也不准确，实际是
+     20 个 test function，断言数远多于 20。
+
+  动态验证
+
+  - 我实际跑了 pytest。完整套件先在 tests/test_provider_translation.py 收集阶段失败，直接原因是当前环境缺 anthropic，而
+    该测试做了顶层导入。
+  - 去掉该文件后，7 个非 tmp_path 测试先通过；其余 6 个被当前机器临时目录权限问题阻断。这部分属于环境噪音，但也说明测试
+    对运行环境较脆。
+
+  结论
+
+  总体评分：6/10
+  判定：No-Go
+
+  这套脚手架的骨架方向是对的，尤其是 tool_call_id、to_thread、实例级 Lock、按 conv_id 分桶这些关键点大体站住了；但 Stage
+  3 verifier 的契约不诚实、后台持久化无兜底、API/入口层的“伪 DI”以及测试覆盖被高估，这四块还没到可放心交付的程度。修完这
+  四项，再补一轮真正的 provider/outbound/ordering 测试，才适合转 Go。

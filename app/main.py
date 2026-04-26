@@ -1,0 +1,116 @@
+"""Dual entry point: CLI (default) + FastAPI (--api flag).
+
+Usage:
+    python -m app.main          # CLI interactive mode
+    python -m app.main --api    # FastAPI server mode
+
+DI STRATEGY:
+- API mode: Agent is stored on app.state.agent via lifespan context manager.
+  Routes access it through request.app.state — NO module-level globals.
+- CLI mode: Agent is created and used within cli_main() scope — no globals needed.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import sys
+import uuid
+from contextlib import asynccontextmanager
+
+from app.config import Settings
+
+
+# ── CLI Mode ─────────────────────────────────────────────────────
+
+
+async def cli_main(settings: Settings) -> None:
+    """Interactive CLI loop."""
+    from app.factory import build_agent
+
+    agent = await build_agent(settings)
+    conv_id = str(uuid.uuid4())
+
+    print(f"\n🤖 Personal AI Agent (provider={settings.llm_provider}, model={settings.resolved_model()})")
+    print(f"📝 Conversation: {conv_id}")
+    print("Type 'quit' or 'exit' to stop.\n")
+
+    while True:
+        try:
+            user_input = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye!")
+            break
+
+        if not user_input:
+            continue
+        if user_input.lower() in ("quit", "exit"):
+            print("Goodbye!")
+            break
+
+        result = await agent.run(
+            user_message=user_input,
+            conversation_id=conv_id,
+        )
+        print(f"Agent: {result.content}\n")
+
+
+# ── API Mode ─────────────────────────────────────────────────────
+
+
+def api_main(settings: Settings) -> None:
+    """Start FastAPI server with uvicorn.
+
+    Agent is injected via app.state.agent using lifespan context manager —
+    NOT module-level globals. Routes access via request.app.state.
+    """
+    import uvicorn
+    from fastapi import FastAPI
+
+    from app.api.routes import router
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Lifespan handler: build agent on startup, cleanup on shutdown."""
+        from app.factory import build_agent
+
+        agent = await build_agent(settings)
+        app.state.agent = agent
+        logger = logging.getLogger(__name__)
+        logger.info("Agent initialized and stored on app.state")
+        yield
+        # Cleanup (if needed in future)
+        logger.info("Shutting down agent")
+
+    app = FastAPI(
+        title="Personal AI Agent",
+        description="AI Agent with Tool Use, Memory & Self-Verification",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+    app.include_router(router)
+
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level=settings.log_level.lower())
+
+
+# ── Entrypoint ───────────────────────────────────────────────────
+
+
+def main() -> None:
+    """Main entrypoint — detect --api flag."""
+    settings = Settings()
+
+    # Configure logging
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper(), logging.INFO),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    if "--api" in sys.argv:
+        api_main(settings)
+    else:
+        asyncio.run(cli_main(settings))
+
+
+if __name__ == "__main__":
+    main()
