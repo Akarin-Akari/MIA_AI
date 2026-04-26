@@ -149,7 +149,17 @@ python -m app.main --api
 
 ## Trade-offs
 
-<!-- Layer 2: Document trade-offs made during the challenge -->
+1. **Mock Weather API vs Real API** — `WeatherTool` uses deterministic RNG seeded by city name instead of calling a real weather API. This gives consistent demo results without requiring external API keys during the challenge. The `_fetch_weather` method is designed as a single swap point for production integration.
+
+2. **Heuristic Fact Extraction vs LLM Extraction** — Memory extraction uses pattern matching (e.g., "my name is X") instead of an LLM call. This avoids an extra API round-trip per turn and keeps `after_turn()` fast. The trade-off is lower extraction accuracy for complex statements.
+
+3. **Single-File Notes vs Database Notes** — `NoteTool` stores notes as appended markdown lines in `user_notes.md` instead of SQLite rows. This keeps the demo simple and human-readable, but doesn't scale to thousands of notes or support search/filtering.
+
+4. **Forced Tool Use in Stage 3 vs response_format** — The verifier forces LLM to call `submit_verification` tool instead of using `response_format: json_schema`. This works across both Anthropic (tool_choice) and OpenAI (tool_choice), whereas `response_format` has different semantics between providers.
+
+5. **asyncio.Lock vs filelock** — MarkdownMemory uses `asyncio.Lock` (single-process only). For multi-worker deployments, this must be upgraded to `filelock` for cross-process safety. Documented in the Multi-Worker Warning section.
+
+6. **Fire-and-forget Memory Persistence** — `after_turn()` runs as a background task to avoid blocking the response. The trade-off: if the process crashes between response delivery and persistence completion, that turn's memory update is lost. Acceptable for a personal agent where data loss is inconvenient but not catastrophic.
 
 ## What I Would Build Next
 

@@ -26,8 +26,11 @@ class OpenAIClient:
     MUST use `client.chat.completions.create()` — NEVER `responses.create()`.
     """
 
-    def __init__(self, api_key: str, model: str) -> None:
-        self._client = openai.AsyncOpenAI(api_key=api_key)
+    def __init__(self, api_key: str, model: str, base_url: str = "") -> None:
+        kwargs: dict[str, Any] = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+        self._client = openai.AsyncOpenAI(**kwargs)
         self._model = model
 
     # ── Inbound Translation ──────────────────────────────────────────

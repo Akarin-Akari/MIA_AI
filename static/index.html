@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIA — Personal AI Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* ── Design Tokens ─────────────────────────────────────── */
+        :root {
+            --bg:              #0a0a0f;
+            --bg-card:         #12121a;
+            --bg-muted:        #1c1c2e;
+            --fg:              #e0e0e0;
+            --fg-muted:        #6b7280;
+            --accent:          #00ff88;
+            --accent-sec:      #ff00ff;
+            --accent-tri:      #00d4ff;
+            --border:          #2a2a3a;
+            --destructive:     #ff3366;
+
+            --font-heading:    'Orbitron', 'Share Tech Mono', monospace;
+            --font-body:       'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            --font-label:      'Share Tech Mono', monospace;
+
+            --glow-sm:         0 0 3px var(--accent), 0 0 6px rgba(0,255,136,0.19);
+            --glow-md:         0 0 5px var(--accent), 0 0 10px rgba(0,255,136,0.25);
+            --glow-lg:         0 0 10px var(--accent), 0 0 20px rgba(0,255,136,0.37), 0 0 40px rgba(0,255,136,0.19);
+            --glow-sec:        0 0 5px var(--accent-sec), 0 0 20px rgba(255,0,255,0.37);
+            --glow-tri:        0 0 5px var(--accent-tri), 0 0 20px rgba(0,212,255,0.37);
+
+            --transition-fast:   105ms ease-out;
+            --transition-normal: 210ms ease-out;
+            --transition-slow:   350ms ease-out;
+
+            --chamfer: polygon(
+                0 8px, 8px 0,
+                calc(100% - 8px) 0, 100% 8px,
+                100% calc(100% - 8px), calc(100% - 8px) 100%,
+                8px 100%, 0 calc(100% - 8px)
+            );
+            --chamfer-sm: polygon(
+                0 5px, 5px 0,
+                calc(100% - 5px) 0, 100% 5px,
+                100% calc(100% - 5px), calc(100% - 5px) 100%,
+                5px 100%, 0 calc(100% - 5px)
+            );
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--fg);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ── Scanlines Overlay ────────────────────────────────── */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.15) 2px,
+                rgba(0, 0, 0, 0.15) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* ── Circuit Grid Background ─────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 255, 136, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 136, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Ambient Glow Blobs ───────────────────────────────── */
+        .ambient {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+            animation: drift 20s ease-in-out infinite alternate;
+        }
+        .ambient-1 {
+            width: 300px; height: 300px;
+            background: rgba(0, 255, 136, 0.06);
+            top: -100px; left: -100px;
+        }
+        .ambient-2 {
+            width: 250px; height: 250px;
+            background: rgba(255, 0, 255, 0.04);
+            bottom: -80px; right: -80px;
+            animation-delay: -10s;
+        }
+        .ambient-3 {
+            width: 200px; height: 200px;
+            background: rgba(0, 212, 255, 0.03);
+            top: 40%; right: 10%;
+            animation-delay: -5s;
+        }
+        @keyframes drift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, -20px) scale(1.15); }
+        }
+
+        /* ── Header ──────────────────────────────────────────── */
+        .header {
+            background: rgba(18, 18, 26, 0.7);
+            backdrop-filter: blur(34px) saturate(1.6) brightness(0.95);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-avatar {
+            width: 42px;
+            height: 42px;
+            clip-path: var(--chamfer);
+            background: linear-gradient(135deg, var(--accent), var(--accent-tri));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-heading);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--bg);
+            box-shadow: var(--glow-md);
+            position: relative;
+        }
+
+        .header-info h1 {
+            font-family: var(--font-heading);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+        }
+
+        .header-info p {
+            font-family: var(--font-label);
+            font-size: 11px;
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        .status-indicator {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-label);
+            font-size: 10px;
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: var(--glow-sm);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: var(--glow-sm); }
+            50% { opacity: 0.6; box-shadow: 0 0 2px var(--accent); }
+        }
+
+        /* ── Chat Area ───────────────────────────────────────── */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            scroll-behavior: smooth;
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-area::-webkit-scrollbar { width: 4px; }
+        .chat-area::-webkit-scrollbar-track { background: transparent; }
+        .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .chat-area::-webkit-scrollbar-thumb:hover { background: var(--accent); box-shadow: var(--glow-sm); }
+
+        /* ── Messages ────────────────────────────────────────── */
+        .message {
+            max-width: 72%;
+            padding: 12px 16px;
+            line-height: 1.65;
+            font-size: 13px;
+            animation: msgIn 0.25s ease-out;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            position: relative;
+        }
+
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: rgba(0, 255, 136, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            clip-path: var(--chamfer);
+            color: var(--fg);
+        }
+
+        .message.agent {
+            align-self: flex-start;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            clip-path: var(--chamfer);
+            color: var(--fg);
+        }
+
+        .message.agent::before {
+            content: '>';
+            position: absolute;
+            left: -16px;
+            top: 12px;
+            color: var(--accent);
+            font-family: var(--font-label);
+            font-size: 12px;
+            opacity: 0.5;
+        }
+
+        .message.system {
+            align-self: center;
+            background: transparent;
+            color: var(--fg-muted);
+            font-family: var(--font-label);
+            font-size: 11px;
+            padding: 4px 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            clip-path: none;
+            border: none;
+        }
+
+        .message.system::before {
+            content: '// ';
+            color: var(--accent);
+            opacity: 0.4;
+        }
+
+        /* ── Typing Indicator ────────────────────────────────── */
+        .typing {
+            align-self: flex-start;
+            padding: 12px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            clip-path: var(--chamfer-sm);
+            display: none;
+            gap: 5px;
+            align-items: center;
+            font-family: var(--font-label);
+            font-size: 11px;
+            color: var(--fg-muted);
+        }
+
+        .typing.active { display: flex; }
+
+        .typing .cursor {
+            display: inline-block;
+            width: 7px;
+            height: 14px;
+            background: var(--accent);
+            animation: blink 1s step-end infinite;
+            box-shadow: var(--glow-sm);
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* ── Input Area ──────────────────────────────────────── */
+        .input-area {
+            background: rgba(18, 18, 26, 0.7);
+            backdrop-filter: blur(34px) saturate(1.6) brightness(0.95);
+            border-top: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .input-prefix {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent);
+            font-family: var(--font-label);
+            font-size: 14px;
+            pointer-events: none;
+            text-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
+        }
+
+        .input-wrapper textarea {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            clip-path: var(--chamfer-sm);
+            padding: 12px 16px 12px 32px;
+            color: var(--accent);
+            font-family: var(--font-body);
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            max-height: 120px;
+            min-height: 42px;
+            line-height: 1.5;
+            transition: border-color var(--transition-normal),
+                        box-shadow var(--transition-normal);
+        }
+
+        .input-wrapper textarea:focus {
+            border-color: var(--accent);
+            box-shadow: var(--glow-sm);
+        }
+
+        .input-wrapper textarea::placeholder {
+            color: var(--fg-muted);
+            font-family: var(--font-label);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 11px;
+        }
+
+        .send-btn {
+            width: 42px;
+            height: 42px;
+            clip-path: var(--chamfer-sm);
+            background: var(--accent);
+            border: none;
+            color: var(--bg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+            box-shadow: var(--glow-sm);
+        }
+
+        .send-btn:hover {
+            filter: brightness(1.15);
+            box-shadow: var(--glow-md);
+        }
+        .send-btn:active { transform: scale(0.93); }
+        .send-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+
+        .send-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* ── Quick Actions ───────────────────────────────────── */
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            padding: 0 24px 6px;
+            background: transparent;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 10;
+        }
+
+        .quick-btn {
+            padding: 6px 14px;
+            clip-path: var(--chamfer-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--fg-muted);
+            font-family: var(--font-label);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+
+        .quick-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            box-shadow: var(--glow-sm);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .quick-btn .icon {
+            margin-right: 4px;
+        }
+
+        /* ── Glitch Effect on Title ──────────────────────────── */
+        .glitch {
+            position: relative;
+        }
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .glitch::before {
+            color: var(--accent-sec);
+            clip-path: inset(0 0 65% 0);
+            animation: glitch-top 4s infinite linear alternate-reverse;
+        }
+        .glitch::after {
+            color: var(--accent-tri);
+            clip-path: inset(65% 0 0 0);
+            animation: glitch-bottom 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-top {
+            0%, 92% { transform: translate(0); }
+            93% { transform: translate(-2px, 1px); }
+            94% { transform: translate(2px, -1px); }
+            95% { transform: translate(0); }
+        }
+        @keyframes glitch-bottom {
+            0%, 90% { transform: translate(0); }
+            91% { transform: translate(1px, -1px); }
+            93% { transform: translate(-1px, 1px); }
+            94% { transform: translate(0); }
+        }
+
+        /* ── Reduced Motion ──────────────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+            .glitch::before, .glitch::after { animation: none; }
+            .ambient { animation: none; }
+            .status-dot { animation: none; }
+            .typing .cursor { animation: none; opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Ambient glow blobs -->
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+<div class="ambient ambient-3"></div>
+
+<div class="header">
+    <div class="header-avatar">M</div>
+    <div class="header-info">
+        <h1 class="glitch" data-text="MIA">MIA</h1>
+        <p>Personal AI Agent // Terminal v0.1</p>
+    </div>
+    <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusLabel">INIT</span>
+    </div>
+</div>
+
+<div class="chat-area" id="chatArea">
+    <div class="message system">SYSTEM ONLINE — awaiting input...</div>
+</div>
+
+<div class="typing" id="typing">
+    processing<span class="cursor"></span>
+</div>
+
+<div class="quick-actions">
+    <button class="quick-btn" onclick="sendQuick('What\'s the weather in Tokyo?')"><span class="icon">&gt;</span> weather.tokyo</button>
+    <button class="quick-btn" onclick="sendQuick('Save a note: Meeting at 3pm tomorrow')"><span class="icon">&gt;</span> notes.save</button>
+    <button class="quick-btn" onclick="sendQuick('List my notes')"><span class="icon">&gt;</span> notes.list</button>
+    <button class="quick-btn" onclick="sendQuick('My name is Alice and I live in Tokyo')"><span class="icon">&gt;</span> profile.init</button>
+</div>
+
+<div class="input-area">
+    <div class="input-wrapper">
+        <span class="input-prefix">&gt;</span>
+        <textarea id="userInput" placeholder="enter command..." rows="1"
+                  onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    </div>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/></svg>
+    </button>
+</div>
+
+<script>
+    const API_BASE = window.location.origin;
+    let conversationId = crypto.randomUUID ? crypto.randomUUID() : 'web-' + Date.now();
+
+    const chatArea = document.getElementById('chatArea');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typing = document.getElementById('typing');
+    const statusDot = document.getElementById('statusDot');
+    const statusLabel = document.getElementById('statusLabel');
+
+    function addMessage(content, role) {
+        const div = document.createElement('div');
+        div.className = `message ${role}`;
+        div.textContent = content;
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function setTyping(show) {
+        typing.classList.toggle('active', show);
+        if (show) chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function setDisabled(disabled) {
+        sendBtn.disabled = disabled;
+        userInput.disabled = disabled;
+    }
+
+    function autoResize(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    function handleKey(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    }
+
+    function sendQuick(text) {
+        userInput.value = text;
+        sendMessage();
+    }
+
+    async function sendMessage() {
+        const msg = userInput.value.trim();
+        if (!msg) return;
+
+        addMessage(msg, 'user');
+        userInput.value = '';
+        userInput.style.height = 'auto';
+        setDisabled(true);
+        setTyping(true);
+
+        try {
+            const resp = await fetch(`${API_BASE}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: msg,
+                    conversation_id: conversationId,
+                }),
+            });
+
+            if (!resp.ok) {
+                const err = await resp.text();
+                throw new Error(`HTTP ${resp.status}: ${err}`);
+            }
+
+            const data = await resp.json();
+            addMessage(data.response || data.content || JSON.stringify(data), 'agent');
+        } catch (err) {
+            addMessage(`ERR :: ${err.message}`, 'system');
+            statusDot.style.background = 'var(--destructive)';
+            statusDot.style.boxShadow = '0 0 5px var(--destructive)';
+            statusLabel.textContent = 'ERR';
+        } finally {
+            setTyping(false);
+            setDisabled(false);
+            userInput.focus();
+        }
+    }
+
+    // Health check
+    fetch(`${API_BASE}/health`)
+        .then(r => r.json())
+        .then(d => {
+            statusDot.style.background = 'var(--accent)';
+            statusLabel.textContent = 'ONLINE';
+            addMessage(`LINKED :: ${d.provider || 'agent'} // ${d.model || 'unknown'}`, 'system');
+        })
+        .catch(() => {
+            statusDot.style.background = 'var(--destructive)';
+            statusDot.style.boxShadow = '0 0 5px var(--destructive)';
+            statusLabel.textContent = 'OFFLINE';
+            addMessage('ERR :: cannot reach API — run: python -m app.main --api', 'system');
+        });
+
+    userInput.focus();
+</script>
+</body>
+</html>

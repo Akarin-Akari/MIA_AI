@@ -20,7 +20,9 @@ from app.memory.retriever import NoOpRetriever
 from app.memory.sqlite_store import SQLiteStore
 from app.memory.working import WorkingMemory
 from app.tools.dummy import DummyTool
+from app.tools.notes import NoteTool
 from app.tools.registry import ToolRegistry
+from app.tools.weather import WeatherTool
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,7 @@ async def build_agent(settings: Settings) -> AgentExecutor:
         llm_client = OpenAIClient(
             api_key=settings.openai_api_key,
             model=model,
+            base_url=settings.openai_base_url,
         )
     else:
         supported = ", ".join(sorted(["anthropic", "openai"]))
@@ -66,7 +69,8 @@ async def build_agent(settings: Settings) -> AgentExecutor:
     # ── Tool Registry ────────────────────────────────────────────
     tool_registry = ToolRegistry()
     tool_registry.register(DummyTool())
-    # Layer 2: Register additional tools here
+    tool_registry.register(WeatherTool())
+    tool_registry.register(NoteTool(memory_dir=settings.memory_dir))
 
     # ── Memory Stack ─────────────────────────────────────────────
     # Ensure memory directory exists

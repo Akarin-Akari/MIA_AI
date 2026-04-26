@@ -31,8 +31,10 @@ async def cli_main(settings: Settings) -> None:
     agent = await build_agent(settings)
     conv_id = str(uuid.uuid4())
 
-    print(f"\n🤖 Personal AI Agent (provider={settings.llm_provider}, model={settings.resolved_model()})")
-    print(f"📝 Conversation: {conv_id}")
+    tools = [sp.name for sp in agent._tools.specs()]
+    print(f"\nPersonal AI Agent (provider={settings.llm_provider}, model={settings.resolved_model()})")
+    print(f"Tools: {tools}")
+    print(f"Conversation: {conv_id[:8]}...")
     print("Type 'quit' or 'exit' to stop.\n")
 
     while True:
@@ -88,6 +90,27 @@ def api_main(settings: Settings) -> None:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    # CORS for local development
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Serve frontend — register root route BEFORE API router
+    from pathlib import Path
+    static_dir = Path(__file__).parent.parent / "static"
+    if static_dir.exists():
+        from fastapi.responses import FileResponse
+
+        @app.get("/", include_in_schema=False)
+        async def root():
+            """Serve chat frontend."""
+            return FileResponse(static_dir / "index.html")
+
     app.include_router(router)
 
     uvicorn.run(app, host=settings.api_host, port=settings.api_port, log_level=settings.log_level.lower())

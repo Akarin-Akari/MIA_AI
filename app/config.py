@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     llm_provider: str = "anthropic"
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    openai_base_url: str = ""  # Custom base URL for OpenAI-compatible APIs (e.g. ZhiPu)
     model_name: str = ""
     llm_max_tokens: int = 4096
     max_iterations: int = 10

@@ -1,8 +1,18 @@
 # Memory Extraction Prompt
 
-Extract key facts about the user from the following conversation. Focus on:
-- Personal preferences (language, timezone, name)
-- Stated facts (age, location, occupation)
-- Behavioral patterns (communication style, interests)
+Extract factual information about the user from the conversation.
 
-Return facts as a JSON array of strings.
+## What to Extract
+
+- **Personal info**: name, age, location, occupation, timezone
+- **Preferences**: preferred city for weather, language preference, communication style
+- **Recurring topics**: things the user asks about frequently
+
+## Format
+
+Return each fact as a single line, e.g.:
+- User's name is Alice
+- User lives in Tokyo
+- User prefers Celsius for temperature
+
+Only extract facts that the user has explicitly stated. Do NOT infer or guess.

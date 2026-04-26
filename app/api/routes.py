@@ -34,10 +34,17 @@ def _get_agent_from_request(request: Request):
 @router.get("/health", response_model=HealthResponse)
 async def health(request: Request) -> HealthResponse:
     """Health check endpoint."""
+    from app.config import Settings
+    settings = Settings()
+
     agent = getattr(request.app.state, "agent", None)
     if agent is None:
         return HealthResponse(status="starting")
-    return HealthResponse(status="ok")
+    return HealthResponse(
+        status="ok",
+        provider=settings.llm_provider,
+        model=settings.resolved_model(),
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
