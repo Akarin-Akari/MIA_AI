@@ -88,12 +88,12 @@ class ReadNotesTool(BaseTool):
                 body_preview = " ".join(body_lines)[:200]
 
                 results.append(
-                    f"📝 **{title}**\n"
+                    f"[NOTE] **{title}**\n"
                     f"   File: {note_path.name}\n"
                     f"   Preview: {body_preview}..."
                 )
             except Exception as e:
-                results.append(f"⚠️ Error reading {note_path.name}: {e}")
+                results.append(f"[WARN] Error reading {note_path.name}: {e}")
 
         if not results:
             return f"No notes matching '{query}' found. Total notes on disk: {len(note_files)}"

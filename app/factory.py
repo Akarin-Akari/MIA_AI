@@ -85,7 +85,18 @@ async def build_agent(settings: Settings) -> AgentExecutor:
     ))
 
     if inject_target:
-        logger.warning("⚠️ INJECT_FAILURE='%s' — tool '%s' will raise on execute", inject_target, inject_target)
+        valid_targets = {"mock_search", "write_note"}
+        if inject_target in valid_targets:
+            logger.warning(
+                "INJECT_FAILURE='%s' -- tool '%s' will raise on execute",
+                inject_target, inject_target,
+            )
+        else:
+            logger.warning(
+                "INJECT_FAILURE='%s' does NOT match any injectable tool (%s). "
+                "Fault injection is INACTIVE.",
+                inject_target, ", ".join(sorted(valid_targets)),
+            )
 
     # ── Memory Stack ─────────────────────────────────────────────
     # Ensure memory directory exists

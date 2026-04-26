@@ -90,7 +90,7 @@ class WriteNoteTool(BaseTool):
         self._notes_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate timestamped filename
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
         safe_title = "".join(c if c.isalnum() or c in "-_ " else "" for c in title).strip()
         safe_title = safe_title.replace(" ", "_")[:50]
         filename = f"{timestamp}_{safe_title}.md"

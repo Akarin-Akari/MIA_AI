@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 DEFAULT_MODELS: dict[str, str] = {
-    "anthropic": "claude-sonnet-4-5",
+    "anthropic": "claude-sonnet-4-20250514",
     "openai": "gpt-4o-mini",
 }
 
