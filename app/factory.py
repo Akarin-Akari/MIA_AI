@@ -117,8 +117,34 @@ async def build_agent(settings: Settings) -> AgentExecutor:
     sqlite = SQLiteStore(db_path=settings.db_path)
     await sqlite.initialize()
 
-    # Retriever: FTS5 by default, NoOp fallback when RAG disabled
-    if settings.rag_enabled and settings.retriever_provider == "fts5":
+    # Retriever: hybrid (default) > fts5 > noop
+    if settings.rag_enabled and settings.retriever_provider == "hybrid":
+        from app.memory.providers.embeddings import create_embedding_provider
+        from app.memory.providers.hybrid_retriever import HybridRetriever
+        from app.memory.providers.reranker import create_reranker
+
+        embedding_provider = create_embedding_provider(
+            mode=settings.embedding_mode,
+            model=settings.embedding_model,
+            api_url=settings.embedding_api_url,
+            api_key=settings.embedding_api_key or settings.openai_api_key,
+            dimension=settings.embedding_dimension,
+            cache_dir=settings.embedding_cache_dir,
+        )
+        reranker = create_reranker(
+            mode=settings.rerank_mode,
+            model=settings.rerank_model,
+            api_url=settings.rerank_api_url,
+            api_key=settings.rerank_api_key,
+        )
+        retriever = HybridRetriever(
+            db_path=settings.db_path,
+            embedding_provider=embedding_provider,
+            reranker=reranker,
+        )
+        await retriever.initialize()
+        logger.info("Hybrid retriever enabled (vector+fts5+rrf+rerank)")
+    elif settings.rag_enabled and settings.retriever_provider == "fts5":
         retriever = FTS5Retriever(db_path=settings.db_path)
         await retriever.initialize()
         logger.info("FTS5 retriever enabled")

@@ -54,7 +54,21 @@ class Settings(BaseSettings):
 
     # RAG
     rag_enabled: bool = True
-    retriever_provider: str = "fts5"
+    retriever_provider: str = "hybrid"  # "hybrid" | "fts5" | "noop"
+
+    # Embedding (for hybrid retriever)
+    embedding_mode: str = "local"  # "local" | "api"
+    embedding_model: str = ""  # auto-detect from mode if empty
+    embedding_api_url: str = ""  # OpenAI-compatible endpoint
+    embedding_api_key: str = ""  # can reuse openai_api_key
+    embedding_dimension: int = 1536  # api mode only
+    embedding_cache_dir: str = "F:/models"
+
+    # Reranker (for hybrid retriever)
+    rerank_mode: str = "local"  # "local" | "api" | "none"
+    rerank_model: str = ""  # auto-detect from mode if empty
+    rerank_api_url: str = ""  # Jina/Cohere endpoint
+    rerank_api_key: str = ""
 
     # Verifier
     verification_enabled: bool = True

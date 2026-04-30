@@ -12,6 +12,10 @@ openai>=1.50.0
 aiosqlite>=0.20.0
 aiofiles>=24.1.0
 
+# Vector Store & Embedding
+chromadb>=1.0.0
+sentence-transformers>=3.0.0
+
 # Environment
 python-dotenv>=1.0.0
 rich>=13.0.0
