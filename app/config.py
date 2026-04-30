@@ -52,9 +52,9 @@ class Settings(BaseSettings):
     memory_dir: str = "memory"
     working_max_per_conv: int = 50
 
-    # RAG (Layer 2)
-    rag_enabled: bool = False
-    retriever_provider: str = "noop"
+    # RAG
+    rag_enabled: bool = True
+    retriever_provider: str = "fts5"
 
     # Verifier
     verification_enabled: bool = True

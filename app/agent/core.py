@@ -153,8 +153,10 @@ class AgentExecutor:
         conversation_id: str,
     ) -> CanonicalMessage:
         """Inner ReAct loop implementation."""
-        # Get context from memory
-        system_ctx, working_msgs = await self._memory.get_context(conversation_id)
+        # Get context from memory (pass user query for RAG retrieval)
+        system_ctx, working_msgs = await self._memory.get_context(
+            conversation_id, query=user_message,
+        )
 
         # Build initial messages
         messages: list[CanonicalMessage] = list(working_msgs)

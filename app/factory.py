@@ -17,6 +17,7 @@ from app.config import Settings
 from app.memory.manager import MemoryManager
 from app.memory.markdown_store import MarkdownMemory
 from app.memory.retriever import NoOpRetriever
+from app.memory.providers.fts5_retriever import FTS5Retriever
 from app.memory.sqlite_store import SQLiteStore
 from app.memory.working import WorkingMemory
 from app.tools.dummy import DummyTool
@@ -116,14 +117,20 @@ async def build_agent(settings: Settings) -> AgentExecutor:
     sqlite = SQLiteStore(db_path=settings.db_path)
     await sqlite.initialize()
 
-    # Retriever: NoOp by default, Layer 2 adds real implementations
-    retriever = NoOpRetriever()
+    # Retriever: FTS5 by default, NoOp fallback when RAG disabled
+    if settings.rag_enabled and settings.retriever_provider == "fts5":
+        retriever = FTS5Retriever(db_path=settings.db_path)
+        await retriever.initialize()
+        logger.info("FTS5 retriever enabled")
+    else:
+        retriever = NoOpRetriever()
 
     memory_manager = MemoryManager(
         working=working,
         markdown=markdown,
         sqlite=sqlite,
         retriever=retriever,
+        llm_client=llm_client,
     )
 
     # ── Self-Verifier ────────────────────────────────────────────
